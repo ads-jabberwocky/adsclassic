@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+try:
+    import cgi
+    from ads_classic_lib import runQuery, printHeader, printTable, printFooter, udecode, uencode
+    query     = []
+    form      = cgi.FieldStorage()
+    db_key    = form.getlist('db_key')
+    author    = udecode(form.getfirst('author'))
+    title     = udecode(form.getfirst('title'))
+    text      = udecode(form.getfirst('text'))
+    start_mon = udecode(form.getfirst('start_mon'))
+    start_year= udecode(form.getfirst('start_year'))
+    end_mon   = udecode(form.getfirst('end_mon'))
+    end_year  = udecode(form.getfirst('end_year'))
+    sort      = udecode(form.getfirst('sort', 'NDATE'))
+
+    try:
+        num_items = int(form.getfirst('nr_to_return'))
+    except:
+        num_items = 200
+    try:
+        start_item= int(form.getfirst('start_nr'))-1
+    except:
+        start_item= 0
+
+    if author:
+        modifier = '+' if form.getfirst('aut_req', 'NO') == 'YES' else ''
+        logic    = form.getfirst('aut_logic')
+        if logic == 'BOOL':
+            query.append(modifier + 'author:(' + author + ')')
+        else:
+            logic= ' AND ' if logic == 'AND' else ' OR '
+            aut_list = []
+            for a in author.replace(';','\n').splitlines():
+                if a!='':  aut_list.append('"%s"' % a)
+            query.append(modifier + 'author:(' + logic.join(aut_list) + ')')
+
+    if title:
+        modifier = '+' if form.getfirst('ttl_req', 'NO') == 'YES' else ''
+        logic    = form.getfirst('ttl_logic')
+        if logic == 'BOOL':
+            query.append(modifier + 'title:(' + title + ')')
+        else:
+            logic= ' AND ' if logic == 'AND' else ' OR '
+            query.append(modifier + 'title:(' + logic.join(title.split()) + ')')
+
+    if text:
+        modifier = '+' if form.getfirst('txt_req', 'NO') == 'YES' else ''
+        logic    = form.getfirst('txt_logic')
+        if logic == 'BOOL':
+            query.append(modifier + 'abs:(' + text + ')')
+        else:
+            logic= ' AND ' if logic == 'AND' else ' OR '
+            query.append(modifier + 'abs:(' + logic.join(text.split()) + ')')
+
+    # compose the database query from several fields
+    if query != []:
+        query = [' OR '.join(query)]
+
+    # check if date range was (partially) provided
+    if start_year or end_year:
+        if start_year is None: start_year = '0000'
+        if start_mon  is None: start_mon  = '00'
+        if end_year   is None: end_year   = '9999'
+        if end_mon    is None: end_mon    = '12'
+        query.append('pubdate:[%s-%s TO %s-%s]' % (start_year, start_mon, end_year, end_mon))
+
+    if len(query) == 0:
+        raise ValueError('Empty query')
+
+    # add the database specification (narrow down the search)
+    database  = []
+    if 'AST' in db_key: database.append('astronomy')
+    if 'PHY' in db_key: database.append('physics')
+    #  'PRE' stands for arXiv, but there is no way to query for it in the new ADS
+    if 'GEN' in db_key: database.append('general')
+    if database != []:
+        query.append('database:(' + ' OR '.join(database) + ')')
+
+    # send query to the ADS database
+    querystr = ' '.join(query)
+    result   = runQuery(querystr, sort=sort, start=start_item, num_items=num_items)
+
+    # if the number of matched items is too large, display only a subset of them,
+    # and add a link to retrieve the next subset
+    if result['numFound'] > len(result['docs']):
+        import os
+        query_string = udecode(os.environ['QUERY_STRING'])
+        new_start_nr = 'start_nr=' + str(start_item + num_items + 1)
+        old_start_nr = 'start_nr=' + str(start_item + 1)
+        if old_start_nr in query_string:
+            query_string = query_string.replace(old_start_nr, new_start_nr)
+        else:
+            query_string += '&' + new_start_nr
+        footer = '<h3>Get <a href="/cgi-bin/nph-abs_connect?' + query_string + '">next set of references</a></h3>\n'
+    else:
+        footer = ''
+
+    # format the output table
+    print(uencode(
+        printHeader('Author Query Results', 'Query Results from the ADS Database: ' +
+            '<a href="https://ui.adsabs.harvard.edu/search/q=' + querystr.replace('"', '&#34;') +
+            '">' + querystr + "</a>") +
+        printTable (result, start=start_item, sort=sort) +
+        printFooter(result, footer) ))
+
+except Exception as ex:
+    import sys #, traceback
+    print('Content-type: text/plain; charset=UTF-8\r\n\r\n' + str(ex))
+    #traceback.print_exc(file=sys.stdout)

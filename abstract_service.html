@@ -1,0 +1,55 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>SAO/NASA ADS Query form</title>
+<link rel="icon" href="http://adsabs.harvard.edu/favicon.ico">
+</head>
+<body>
+<form method="GET" action="/cgi-bin/nph-abs_connect" name="abs_connect">
+<div align="center">
+<h3><a href="http://adsabs.harvard.edu/">SAO/NASA Astrophysics Data System (ADS)</a></h3>
+
+<input style="background-color: #55bbff; color: #000000; font-size:16pt; height:32pt;" type="submit" value=" Send Query "><br>
+<br>Databases to query:
+<input type="checkbox" name="db_key" value="AST" checked>&nbsp;<span class="hl">Astronomy</span>&nbsp;&nbsp;&nbsp;
+<input type="checkbox" name="db_key" value="PHY"        >&nbsp;<span class="hl">Physics</span>&nbsp;&nbsp;&nbsp;
+<input type="checkbox" name="db_key" value="GEN"        >&nbsp;<span class="hl">General</span>&nbsp;&nbsp;&nbsp;
+<!--input type="checkbox" name="db_key" value="PRE" checked>&nbsp;<a href="http://adsabs.harvard.edu/preprint_service.html">arXiv e-prints</a>&nbsp;&nbsp;&nbsp;-->
+
+<pre><b><a href="http://adsabs.harvard.edu/abs_doc/help_pages/search.html#Authors">Authors</a></b>: (Last, First M; )    <input type="checkbox"  name="aut_req" value="YES"> Require author for selection
+  (Combine with: <input type="radio" checked name="aut_logic" value="OR"> OR  <input type="radio" name="aut_logic" value="AND"> AND  <input type="radio" name="aut_logic" value="BOOL"> <a href="http://adsabs.harvard.edu/abs_doc/help_pages/search.html#booleanlogic">boolean logic</a>)
+<textarea name="author" cols="60" rows="2"></textarea>
+
+<b>Publication Date</b> between <input name="start_mon" size="3">  <input name="start_year" size="5"> and <input name="end_mon" size="3">  <input name="end_year" size="5">
+                         (MM) (YYYY)     (MM) (YYYY)
+
+<b>Enter <a href="http://adsabs.harvard.edu/list_abs.html">Title Words</a></b>            <input type="checkbox"  name="ttl_req" value="YES"> Require title for selection
+  (Combine with: <input type="radio" checked name="ttl_logic" value="OR"> OR  <input type="radio" name="ttl_logic" value="AND"> AND  <input type="radio" name="ttl_logic" value="BOOL"> <a href="http://adsabs.harvard.edu/abs_doc/help_pages/search.html#booleanlogic">boolean logic</a>)
+<textarea name="title" wrap="soft" cols="60" rows="2"></textarea>
+
+<b>Enter <a href="http://adsabs.harvard.edu/list_abs.html">Abstract Words</a>/Keywords</b>  <input type="checkbox"  name="txt_req" value="YES"> Require text for selection   
+  (Combine with: <input type="radio" checked name="txt_logic" value="OR"> OR  <input type="radio" name="txt_logic" value="AND"> AND  <input type="radio" name="txt_logic" value="BOOL"> <a href="http://adsabs.harvard.edu/abs_doc/help_pages/search.html#booleanlogic">boolean logic</a>)
+<textarea name="text" wrap="soft" cols="60" rows="3"></textarea>
+
+Return <input name="nr_to_return" size="5" value="200"> items starting with number <input name="start_nr" size="5" value="1"></pre>
+
+<h3>SORTING</h3>
+<table>
+<tr><td><input type="radio"  name="sort" value="SCORE"> Sort by score</td></tr>
+<tr><td><input type="radio"  name="sort" value="CITATIONS"> Sort by citation count</td></tr>
+<tr><td><input type="radio"  name="sort" value="AUTHOR"> Sort by first author name</td></tr>
+<tr><td><input type="radio"  name="sort" value="AUTHOR_CNT"> Sort by number of authors</td></tr>
+<tr><td><input type="radio"  name="sort" value="NDATE" checked> Sort by date (most recent first)</td></tr>
+<tr><td><input type="radio"  name="sort" value="ODATE"> Sort by date (oldest first)</td></tr>
+</table>
+
+<br>
+<input style="background-color: #55bbff; color: #000000; font-size:16pt; height:32pt;" type="submit" value=" Send Query ">
+</form>
+<br><br><br>
+Feedback / bug reports:&nbsp; <span style="color:blue">ads.jabberwocky</span>&#64;<span style="color:blue">protonmail.com</span><br><br>
+Best viewed in
+<table><tr><td valign="middle"><pre><b><big>eLinks/Lynx</big></b></pre></td><td>&nbsp;&nbsp;&nbsp;<img src="nn.gif"></td><td>&nbsp;&nbsp;&nbsp;<img src="ie.gif"></td></tr></table>
+</center>
+</body>
+</html>

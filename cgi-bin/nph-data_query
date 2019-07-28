@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+def run():
+    import os
+    from ads_classic_lib import runQuery, printHeader, printTable, printAbstract, printFooter, udecode, uencode
+    query_str  = udecode(os.environ['QUERY_STRING'])
+    qabs = 'link_type=ABSTRACT'   in query_str
+    qref = 'link_type=REFERENCES' in query_str
+    qcit = 'link_type=CITATIONS'  in query_str
+    if not (qabs or qref or qcit):
+        # redirect request to the original ADS
+        newurl = 'http://adsabs.harvard.edu/cgi-bin/nph-data_query?%s' % query_str
+        print('Location: %s\r\n\r\n' % newurl)
+        # if that didn't work, also output an html document with redirection to the new url
+        print('<html><head><meta http-equiv="refresh" content="0;url=%s"/></head><body><a href=%s>click here if you are not redirected automatically</a></body></html>' % (newurl, newurl))
+        return
+
+    # parse the query string and extract bibcode(s):
+    # we can't just split query_str by &, because bibcodes can also contain this symbol
+    bibcode = []
+    indx = query_str.find('bibcode=')
+    while indx>=0 and len(query_str) >= indx+8+19:
+        bibcode.append(query_str[indx+8:indx+8+19])
+        query_str = query_str[:indx] + query_str[indx+8+19:]
+        indx = query_str.find('bibcode=')
+
+    if len(bibcode) == 0:
+        raise ValueError('No bibcode provided')
+    elif len(bibcode) == 1:
+        query = 'bibcode:' + bibcode[0]
+    else:
+        query = 'bibcode:(' + ' OR '.join(bibcode) + ')'
+    sort = None
+
+    biblinks  = '; '.join(['<a href="/abs/' + b + '">' + b + '</a>' for b in bibcode])
+
+    if qref:
+        query = 'references(' + query + ')'
+        sort  = 'AUTHOR'
+        title = 'Reference Query Results for ' + '; '.join(bibcode)
+        header= 'References for ' + biblinks
+    elif qcit:
+        query = 'citations(' + query + ')'
+        sort  = 'NDATE'
+        title = 'Citation Query Results for ' + '; '.join(bibcode)
+        header= 'Citations for ' + biblinks
+
+    result = runQuery(query, sort=sort, full=qabs)
+
+    if qref or qcit:
+        output = printHeader(title, header) + printTable(result, sort=sort) + printFooter(result)
+    elif qabs:
+        if result['numFound'] == 0:
+            raise ValueError('Nothing found')
+        elif result['numFound'] == 1:
+            title = ''.join(result['docs'][0]['title'])
+        else:
+            title = 'SAO/NASA ADS: ' + str(result['numFound']) + ' entries found'
+        output = printHeader(title) + \
+            ''.join([printAbstract(item) for item in result['docs']]) + \
+            printFooter(result)
+
+    print(uencode(output))
+
+try:
+    run()
+except Exception as ex:
+    import sys #, traceback
+    print('Content-type: text/plain; charset=UTF-8\r\n\r\n' + str(ex))
+    #traceback.print_exc(file=sys.stdout)
