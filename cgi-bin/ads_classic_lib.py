@@ -5,8 +5,8 @@ if sys.version_info[0] == 2:
 else:
     from urllib.parse import urlencode  # python3
 
-# you need to set the environment variable ADS_TOKEN, or modify the code below to assign it explicitly
-token = os.environ['ADS_TOKEN']
+# you need to set the environment variable ADS_DEV_KEY, or modify the code below to assign it explicitly
+token = os.environ['ADS_DEV_KEY']
 
 now   = datetime.datetime.now()
 dburl = 'https://api.adsabs.harvard.edu/v1/search/query'
@@ -96,35 +96,35 @@ def printSummary(indx, item, sort=None):
     title   = ''.join(item['title']) if 'title' in item else 'Untitled'
     bibcode = item['bibcode']
     date    = item['pubdate'][5:7]+'/'+item['pubdate'][0:4] if 'pubdate' in item else '????/??'
-    adslink = '<a href="http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
-    loclink = '<a href="/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
-    links = ['<span class="h">' + l + '</span>&nbsp;&nbsp;' for l in linkletters]
-    def addlink(letter, ac='', ct=None, link=None):
-        links[linkletters.find(letter)] = link + linktypes[letter] + '"' + ac + \
+    adslink = 'http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
+    loclink = '/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
+    links = ['<span class="h">' + l + '</span>&nbsp;&nbsp;' for l in linkletters]  # letters hidden by default
+    def addlink(letter, url, oa=False, ct=None):
+        links[linkletters.find(letter)] = '<a href="' + url + '"' + (' class="oa"' if oa else '') + \
             (' title="' + str(ct) + '"' if ct is not None else '') + '>' + letter + '</a>&nbsp;&nbsp;'
     if 'abstract' in item:
-        addlink('A', link=loclink)
+        addlink('A', '/abs/' + bibcode)
     if 'citation_count' in item and item['citation_count']>0:
-        addlink('C', ct=item['citation_count'], link=loclink)
+        addlink('C', loclink + linktypes['C'], ct=item['citation_count'])
     if 'reference' in item:
-        addlink('R', ct=len(item['reference']), link=loclink)
+        addlink('R', loclink + linktypes['R'], ct=len(item['reference']))
     if 'links_data' in item:
         for lida in item['links_data']:
             ld = json.loads(lida)
-            ac = ' class="oa"' if 'access' in ld and ld['access'] == 'open' else ''
             lt = ld['type'] if 'type' in ld else None
             ct = ld['instances'] if 'instances' in ld else None
-            if lt == 'electr':    addlink('E', ac, link=adslink)
-            if lt == 'pdf' or lt == 'postscript': addlink('F', ac, link=adslink)
-            if lt == 'gif':       addlink('G', ac, link=adslink)
-            if lt == 'preprint':  addlink('X', ac, link=adslink)
-            if lt == 'data':      addlink('D', ac, ct, link=adslink)
-            if lt == 'simbad':    addlink('S', ac, ct, link=adslink)
-            if lt == 'ned':       addlink('N', ac, ct, link=adslink)
-            if lt == 'spires':    addlink('H', ac, link=adslink)
+            oa = 'access' in ld and ld['access'] == 'open'
+            if lt == 'electr':              addlink('E', adslink + linktypes['E'], oa=oa)
+            if lt in ['pdf', 'postscript']: addlink('F', adslink + linktypes['F'], oa=oa)
+            if lt == 'gif':                 addlink('G', adslink + linktypes['G'], oa=oa)
+            if lt == 'preprint':            addlink('X', ld['url'], oa=True, ct=ld['url'][ld['url'].find('arxiv.org/abs/')+14:])
+            if lt == 'data':                addlink('D', adslink + linktypes['D'], ct=ct)
+            if lt == 'simbad':              addlink('S', adslink + linktypes['S'], ct=ct)
+            if lt == 'ned':                 addlink('N', adslink + linktypes['N'], ct=ct)
+            if lt == 'spires':              addlink('H', ld['url'])
     if 'esources' in item:
-        if 'ADS_PDF'  in item['esources']: addlink('F', ' class="oa"', link=adslink)
-        if 'ADS_SCAN' in item['esources']: addlink('G', ' class="oa"', link=adslink)
+        if 'ADS_PDF'  in item['esources']:  addlink('F', adslink + linktypes['F'], oa=True)
+        if 'ADS_SCAN' in item['esources']:  addlink('G', adslink + linktypes['G'], oa=True)
     if   sort == 'CITATIONS' :
         score = str(item['citation_count']) if 'citation_count' in item else '0'
     elif sort == 'AUTHOR_CNT':
@@ -146,37 +146,34 @@ def printAbstract(item):
     title   = ''.join(item['title']) if 'title' in item else 'Untitled'
     date    = item['pubdate'][5:7]+'/'+item['pubdate'][0:4] if 'pubdate' in item else '????/??'
     bibcode = item['bibcode']
-    adslink = '<a href="http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
-    loclink = '<a href="/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
-    result  = '<hr><dl>\n'
+    adslink = 'http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
+    loclink = '/cgi-bin/nph-data_query?bibcode=' + bibcode + '&link_type='
     links   = [''] * len(linkletters)
-    def addlink(letter, text, ac='', ct=None, link=None):
-        links[linkletters.find(letter)] = '<dt><b>' + link + linktypes[letter] + '"' + ac + \
-            '>' + text + (' ('+str(ct)+')' if ct is not None else '') + '</a></b><br>'
-    def addarxiv(url):
-        links[linkletters.find('X')] = '<dt><b><a href="' + url + \
-            '" class="oa">arXiv e-print</a></b> (' + url[url.find('arxiv.org/abs/')+14:] + ')<br>'
+    def addlink(letter, url, text, oa=False, ct=None):
+        links[linkletters.find(letter)] = '<dt><b><a href="' + url + '"' + (' class="oa"' if oa else '') + \
+            '>' + text + '</a></b>' + (' ('+str(ct)+')' if ct is not None else '')
     if 'links_data' in item:
         for lida in item['links_data']:
             ld = json.loads(lida)
-            ac = ' class="oa"' if 'access' in ld and ld['access'] == 'open' else ''
             lt = ld['type'] if 'type' in ld else None
             ct = ld['instances'] if 'instances' in ld and ld['instances']!='' else None
-            if lt == 'electr':    addlink('E', 'Electronic on-line article (HTML)', ac, link=adslink)
-            if lt == 'pdf' or lt == 'postscript':  addlink('F', 'Full article (PDF/Postscript)', ac, link=adslink)
-            if lt == 'gif':       addlink('G', 'Scanned article (GIF)', ac, link=adslink)
-            if lt == 'preprint':  addarxiv(ld['url'])
-            if lt == 'data':      addlink('D', 'On-line data', ac, ct, link=adslink)
-            if lt == 'simbad':    addlink('S', 'SIMBAD objects', ac, ct, link=adslink)
-            if lt == 'ned':       addlink('N', 'NED objects', ac, ct, link=adslink)
-            if lt == 'spires':    addlink('H', 'HEP/Spires information', ac, link=adslink)
+            oa = 'access' in ld and ld['access'] == 'open'
+            if lt == 'electr':              addlink('E', adslink + linktypes['E'], 'Electronic on-line article (HTML)', oa=oa)
+            if lt in ['pdf', 'postscript']: addlink('F', adslink + linktypes['F'], 'Full article (PDF/Postscript)', oa=oa)
+            if lt == 'gif':                 addlink('G', adslink + linktypes['G'], 'Scanned article (GIF)', oa=oa)
+            if lt == 'preprint':            addlink('X', ld['url'], 'arXiv e-print', oa=True, ct=ld['url'][ld['url'].find('arxiv.org/abs/')+14:])
+            if lt == 'data':                addlink('D', adslink + linktypes['D'], 'On-line data', ct=ct)
+            if lt == 'simbad':              addlink('S', adslink + linktypes['S'], 'SIMBAD objects', ct=ct)
+            if lt == 'ned':                 addlink('N', adslink + linktypes['N'], 'NED objects', ct=ct)
+            if lt == 'spires':              addlink('H', ld['url'], 'HEP/Spires information')
     if 'esources' in item:
-        if 'ADS_PDF'  in item['esources']: addlink('F', 'Full article (PDF/Postscript)', ' class="oa"', link=adslink)
-        if 'ADS_SCAN' in item['esources']: addlink('G', 'Scanned article (GIF)', ' class="oa"', link=adslink)
+        if 'ADS_PDF'  in item['esources']:  addlink('F', adslink + linktypes['F'], 'Full article (PDF/Postscript)', oa=True)
+        if 'ADS_SCAN' in item['esources']:  addlink('G', adslink + linktypes['G'], 'Scanned article (GIF)', oa=True)
     if 'reference' in item:
-        addlink('R', 'References in the article', '', len(item['reference']), link=loclink)
+        addlink('R', loclink + linktypes['R'], 'References in the article', ct=len(item['reference']))
     if 'citation_count' in item and int(item['citation_count'])>0:
-        addlink('C', 'Citations to the article', '', item['citation_count'], link=loclink)
+        addlink('C', loclink + linktypes['C'], 'Citations to the article', ct=item['citation_count'])
+    result  = '<hr><dl>\n'
     result += ''.join(links)
     result += ('</dl><table>\n<tr><td><b>Title:</b></td><td>&nbsp;</td><td>' + title + '</td></tr>\n' +
         '<tr><td><b>Authors:</b></td><td>&nbsp;</td><td>' + author + '</td></tr>\n')

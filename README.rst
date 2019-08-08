@@ -19,7 +19,7 @@ be viewed in any browser and even in a text mode.
 
 The package can be used locally by running the script ``server.py`` and
 pointing the browser to http://0.0.0.0:8000 (or perhaps another port #).
-One needs to set the environment variable ADS_TOKEN to a 40-character
+One needs to set the environment variable ADS_DEV_KEY to a 40-character
 access token, provided by the ADS for registered users.
 
 Alternatively, this package powers the website http://adsabs.net

@@ -14,6 +14,8 @@ try:
     end_mon   = udecode(form.getfirst('end_mon'))
     end_year  = udecode(form.getfirst('end_year'))
     sort      = udecode(form.getfirst('sort', 'NDATE'))
+    jou_pick  = udecode(form.getfirst('jou_pick', 'ALL'))
+    single_aut= False
 
     try:
         num_items = int(form.getfirst('nr_to_return'))
@@ -34,6 +36,13 @@ try:
             aut_list = []
             for a in author.replace(';','\n').splitlines():
                 if a!='':  aut_list.append('"%s"' % a)
+            if '$' in author:
+                # limitation of the new API: last-author queries are not supported directly
+                if len(aut_list)==1 and aut_list[0][1]=='^' and aut_list[0][-2]=='$':
+                    aut_list[0] = '"' + aut_list[0][2:-2] + '"'  # remove ^ and $
+                    single_aut  = True
+                else:
+                    raise ValueError('Last-author queries are not supported unless they are single-author queries: ^Lastname,F$')
             query.append(modifier + 'author:(' + logic.join(aut_list) + ')')
 
     if title:
@@ -58,6 +67,9 @@ try:
     if query != []:
         query = [' OR '.join(query)]
 
+    if single_aut:
+        query.append('author_count:1')
+
     # check if date range was (partially) provided
     if start_year or end_year:
         if start_year is None: start_year = '0000'
@@ -73,10 +85,16 @@ try:
     database  = []
     if 'AST' in db_key: database.append('astronomy')
     if 'PHY' in db_key: database.append('physics')
-    #  'PRE' stands for arXiv, but there is no way to query for it in the new ADS
     if 'GEN' in db_key: database.append('general')
-    if database != []:
+    if len(database) == 1:
+        query.append('database:' + database[0])
+    elif database != []:
         query.append('database:(' + ' OR '.join(database) + ')')
+
+    # optional additional filters
+    if jou_pick == 'NO':   query.append('property:refereed')
+    if jou_pick == 'EXCL': query.append('property:not_refereed')
+    if jou_pick == 'ART':  query.append('property:article')
 
     # send query to the ADS database
     querystr = ' '.join(query)
